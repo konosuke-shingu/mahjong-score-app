@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.3",
+    page_title="麻雀成績集計 v8.4",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -106,51 +106,14 @@ st.markdown("""
     }
 
 
-    /* 名前・最終得点のクリアボタンを入力欄の内部右端に表示 */
-    div[class*="st-key-name_wrap_"],
-    div[class*="st-key-score_wrap_"] {
-        position: relative;
-    }
 
-    div[class*="st-key-name_wrap_"] div[data-testid="stButton"],
-    div[class*="st-key-score_wrap_"] div[data-testid="stButton"] {
-        position: absolute;
-        right: 7px;
-        top: 31px;
-        width: 32px !important;
-        z-index: 30;
-        margin: 0 !important;
-    }
-
-    div[class*="st-key-name_wrap_"] div[data-testid="stButton"] button,
-    div[class*="st-key-score_wrap_"] div[data-testid="stButton"] button {
-        min-width: 32px !important;
-        width: 32px !important;
-        min-height: 32px !important;
-        height: 32px !important;
-        padding: 0 !important;
-        border: 0 !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        border-radius: 50% !important;
-        font-size: 1.25rem !important;
-        line-height: 1 !important;
-        opacity: 0.55;
-    }
-
-    div[class*="st-key-name_wrap_"] div[data-testid="stButton"] button:hover,
-    div[class*="st-key-score_wrap_"] div[data-testid="stButton"] button:hover {
-        opacity: 0.95;
-        background: rgba(128,128,128,0.12) !important;
-    }
-
-    div[class*="st-key-name_wrap_"] div[data-baseweb="input"] input,
-    div[class*="st-key-score_wrap_"] div[data-baseweb="input"] input {
-        padding-right: 45px !important;
-    }
-
-    div[class*="st-key-score_wrap_"] div[data-testid="stNumberInput"] button {
-        display: none !important;
+    /* ラベル横の×ボタンをコンパクトに */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
+        min-height: 34px;
+        height: 34px;
+        padding: 0 0.25rem;
+        font-size: 1.1rem;
+        border-radius: 8px;
     }
 
     @media (max-width: 600px) {
@@ -328,7 +291,7 @@ def reset_all_scores():
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.3")
+st.title("🀄 麻雀成績集計 v8.4")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -369,40 +332,52 @@ for i in range(4):
     default_name = st.session_state.player_names[i]
     with st.expander(f"{i + 1}人目　{default_name}", expanded=True):
 
-        # 名前：入力欄の右端内部に×をオーバーレイ
-        with st.container(key=f"name_wrap_{i}"):
-            name = st.text_input(
-                "名前",
-                value=default_name,
-                key=f"name_{i}",
-                placeholder=f"プレイヤー{i+1}",
-            )
+        # 名前：ラベルの右側に×ボタン
+        label_col, clear_col = st.columns([0.9, 0.1], vertical_alignment="center")
+        with label_col:
+            st.markdown("**名前**")
+        with clear_col:
             st.button(
                 "×",
                 key=f"clear_name_{i}",
                 help="名前をクリア",
+                use_container_width=True,
                 on_click=clear_name_input,
                 args=(i,),
             )
 
-        # 最終得点：数値専用入力 + 入力欄の右端内部に×をオーバーレイ
-        with st.container(key=f"score_wrap_{i}"):
-            score = st.number_input(
-                "最終得点",
-                min_value=-200000,
-                max_value=300000,
-                value=25000,
-                step=100,
-                key=f"score_{i}",
-                help="数値のみ入力できます（100点単位）",
-            )
+        name = st.text_input(
+            "名前",
+            value=default_name,
+            key=f"name_{i}",
+            placeholder=f"プレイヤー{i+1}",
+            label_visibility="collapsed",
+        )
+
+        # 最終得点：ラベルの右側に×ボタン
+        label_col2, clear_col2 = st.columns([0.9, 0.1], vertical_alignment="center")
+        with label_col2:
+            st.markdown("**最終得点**")
+        with clear_col2:
             st.button(
                 "×",
                 key=f"clear_score_{i}",
                 help="最終得点を空欄にする",
+                use_container_width=True,
                 on_click=clear_score_input,
                 args=(i,),
             )
+
+        score = st.number_input(
+            "最終得点",
+            min_value=-200000,
+            max_value=300000,
+            value=25000,
+            step=100,
+            key=f"score_{i}",
+            help="数値のみ入力できます（100点単位）",
+            label_visibility="collapsed",
+        )
 
         c1, c2 = st.columns(2)
         with c1:
@@ -557,7 +532,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_3.csv",
+        file_name="mahjong_history_v8_4.csv",
         mime="text/csv",
         use_container_width=True,
     )
