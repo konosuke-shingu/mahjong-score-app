@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.8",
+    page_title="麻雀成績集計 v8.9",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -293,7 +293,7 @@ def toggle_score_sign(i):
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.8")
+st.title("🀄 麻雀成績集計 v8.9")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -351,7 +351,7 @@ for i in range(4):
                     value=25000,
                     step=100,
                     key=f"score_{i}",
-                    help="数字を入力し、右の±ボタンでプラス/マイナスを切り替えられます",
+                    help="スマホでは数字キーボードを優先表示します。負数は右の±ボタンで切り替えます",
                     format="%d",
                 )
 
@@ -401,36 +401,81 @@ components.html(
     """
     <script>
     (function () {
+        let lastApply = 0;
+
+        function tuneInput(input) {
+            if (!input) return;
+
+            // 数字キーボードを優先しつつ、負数は±ボタンで切替可能。
+            input.setAttribute('type', 'number');
+            input.setAttribute('inputmode', 'numeric');
+            input.setAttribute('pattern', '[0-9]*');
+            input.setAttribute('enterkeyhint', 'done');
+            input.setAttribute('autocomplete', 'off');
+
+            // Streamlit再描画後にも確実に再適用するため、
+            // focus/touch時にも属性を入れ直す。
+            if (!input.dataset.numericKeyboardBound) {
+                const reapply = () => {
+                    input.setAttribute('type', 'number');
+                    input.setAttribute('inputmode', 'numeric');
+                    input.setAttribute('pattern', '[0-9]*');
+                    input.setAttribute('enterkeyhint', 'done');
+                    input.setAttribute('autocomplete', 'off');
+                };
+                input.addEventListener('focus', reapply, {passive: true});
+                input.addEventListener('touchstart', reapply, {passive: true});
+                input.addEventListener('click', reapply, {passive: true});
+                input.dataset.numericKeyboardBound = '1';
+            }
+        }
+
         function applyNumericKeyboard() {
             try {
+                const now = Date.now();
+                if (now - lastApply < 50) return;
+                lastApply = now;
+
                 const doc = window.parent.document;
+
+                // まずv8.9の専用ラッパーを優先して検索
                 const wrappers = doc.querySelectorAll('[class*="st-key-score_mobile_"]');
                 wrappers.forEach((wrapper) => {
-                    const input = wrapper.querySelector('input');
-                    if (input) {
-                        input.setAttribute('type', 'number');
-                        input.setAttribute('inputmode', 'decimal');
-                        input.setAttribute('pattern', '-?[0-9]*');
-                        input.setAttribute('enterkeyhint', 'done');
-                        input.setAttribute('autocomplete', 'off');
-                    }
+                    tuneInput(wrapper.querySelector('input'));
                 });
+
+                // 念のためキー名 score_0～score_3 の number input も直接補強
+                for (let i = 0; i < 4; i++) {
+                    const keyWrap = doc.querySelector('[class*="st-key-score_' + i + '"]');
+                    if (keyWrap) {
+                        tuneInput(keyWrap.querySelector('input'));
+                    }
+                }
             } catch (e) {
                 console.log("numeric keyboard helper:", e);
             }
         }
 
+        // 初期表示直後・描画後・少し遅れてから複数回適用
         applyNumericKeyboard();
-        setTimeout(applyNumericKeyboard, 300);
-        setTimeout(applyNumericKeyboard, 1000);
+        [100, 300, 700, 1200, 2000, 3500].forEach((ms) => {
+            setTimeout(applyNumericKeyboard, ms);
+        });
 
+        // StreamlitのDOM再描画を監視し続けて再適用
         try {
-            const observer = new MutationObserver(applyNumericKeyboard);
-            observer.observe(window.parent.document.body, {
-                childList: true,
-                subtree: true
+            const doc = window.parent.document;
+            const observer = new MutationObserver(() => {
+                applyNumericKeyboard();
             });
-            setTimeout(() => observer.disconnect(), 8000);
+            observer.observe(doc.body, {
+                childList: true,
+                subtree: true,
+                attributes: false
+            });
+
+            // 長時間開きっぱなしでも、一定時間は監視を維持
+            setTimeout(() => observer.disconnect(), 30000);
         } catch (e) {}
     })();
     </script>
@@ -564,7 +609,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_8.csv",
+        file_name="mahjong_history_v8_9.csv",
         mime="text/csv",
         use_container_width=True,
     )
