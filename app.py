@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.4",
+    page_title="麻雀成績集計 v8.5",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -106,15 +106,6 @@ st.markdown("""
     }
 
 
-
-    /* ラベル横の×ボタンをコンパクトに */
-    div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
-        min-height: 34px;
-        height: 34px;
-        padding: 0 0.25rem;
-        font-size: 1.1rem;
-        border-radius: 8px;
-    }
 
     @media (max-width: 600px) {
         .block-container {
@@ -270,15 +261,6 @@ if "chip_rate" not in st.session_state:
 # -----------------------------
 # 入力補助
 # -----------------------------
-def clear_name_input(i):
-    st.session_state[f"name_{i}"] = ""
-
-
-def clear_score_input(i):
-    # st.number_input は数値専用。None にすると空欄表示にできる。
-    st.session_state[f"score_{i}"] = None
-
-
 def reset_all_scores():
     # 対局入力を次の半荘用の初期状態へ戻す
     # 名前と履歴は維持する
@@ -291,7 +273,7 @@ def reset_all_scores():
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.4")
+st.title("🀄 麻雀成績集計 v8.5")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -332,41 +314,12 @@ for i in range(4):
     default_name = st.session_state.player_names[i]
     with st.expander(f"{i + 1}人目　{default_name}", expanded=True):
 
-        # 名前：ラベルの右側に×ボタン
-        label_col, clear_col = st.columns([0.9, 0.1], vertical_alignment="center")
-        with label_col:
-            st.markdown("**名前**")
-        with clear_col:
-            st.button(
-                "×",
-                key=f"clear_name_{i}",
-                help="名前をクリア",
-                use_container_width=True,
-                on_click=clear_name_input,
-                args=(i,),
-            )
-
         name = st.text_input(
             "名前",
             value=default_name,
             key=f"name_{i}",
             placeholder=f"プレイヤー{i+1}",
-            label_visibility="collapsed",
         )
-
-        # 最終得点：ラベルの右側に×ボタン
-        label_col2, clear_col2 = st.columns([0.9, 0.1], vertical_alignment="center")
-        with label_col2:
-            st.markdown("**最終得点**")
-        with clear_col2:
-            st.button(
-                "×",
-                key=f"clear_score_{i}",
-                help="最終得点を空欄にする",
-                use_container_width=True,
-                on_click=clear_score_input,
-                args=(i,),
-            )
 
         score = st.number_input(
             "最終得点",
@@ -376,7 +329,6 @@ for i in range(4):
             step=100,
             key=f"score_{i}",
             help="数値のみ入力できます（100点単位）",
-            label_visibility="collapsed",
         )
 
         c1, c2 = st.columns(2)
@@ -532,7 +484,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_4.csv",
+        file_name="mahjong_history_v8_5.csv",
         mime="text/csv",
         use_container_width=True,
     )
