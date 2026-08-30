@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.9",
+    page_title="麻雀成績集計 v8.10",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -293,7 +293,7 @@ def toggle_score_sign(i):
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.9")
+st.title("🀄 麻雀成績集計 v8.10")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -316,13 +316,6 @@ with st.expander("計算ルールを確認"):
 # -----------------------------
 st.subheader("対局結果入力")
 st.caption("スマホでは上から1人ずつ入力できます。")
-
-# 最終得点のみ一括で25,000点に戻す
-st.button(
-    "↺ 対局入力をALLクリア（25,000点）",
-    use_container_width=True,
-    on_click=reset_all_scores,
-)
 
 players = []
 scores = []
@@ -565,7 +558,9 @@ if st.button(
             "最終P": float(row["最終P"]),
         })
 
-    st.success(f"第{match_no}半荘を追加しました。")
+    # 履歴追加後、自動で次の半荘用に入力欄を初期化
+    reset_all_scores()
+    st.rerun()
 
 if st.session_state.history:
     history_df = pd.DataFrame(st.session_state.history)
@@ -609,7 +604,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_9.csv",
+        file_name="mahjong_history_v8_10.csv",
         mime="text/csv",
         use_container_width=True,
     )
