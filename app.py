@@ -1,10 +1,11 @@
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.5",
+    page_title="麻雀成績集計 v8.6",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -273,7 +274,7 @@ def reset_all_scores():
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.5")
+st.title("🀄 麻雀成績集計 v8.6")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -321,15 +322,17 @@ for i in range(4):
             placeholder=f"プレイヤー{i+1}",
         )
 
-        score = st.number_input(
-            "最終得点",
-            min_value=-200000,
-            max_value=300000,
-            value=25000,
-            step=100,
-            key=f"score_{i}",
-            help="数値のみ入力できます（100点単位）",
-        )
+        with st.container(key=f"score_mobile_{i}"):
+            score = st.number_input(
+                "最終得点",
+                min_value=-200000,
+                max_value=300000,
+                value=25000,
+                step=100,
+                key=f"score_{i}",
+                help="タップするとスマホでは数字キーボードが優先表示されます",
+                format="%d",
+            )
 
         c1, c2 = st.columns(2)
         with c1:
@@ -358,6 +361,52 @@ for i in range(4):
 
         tobashi_counts.append(int(tobashi_count))
         yakitori_flags.append(bool(yakitori))
+
+
+# スマホで最終得点欄をタップした際、数字キーボードを優先表示する。
+# Streamlitの number_input は元々数値型だが、inputmode を明示して
+# iPhone / Android のブラウザで数字入力UIが出やすいよう補強する。
+components.html(
+    """
+    <script>
+    (function () {
+        function applyNumericKeyboard() {
+            try {
+                const doc = window.parent.document;
+                const wrappers = doc.querySelectorAll('[class*="st-key-score_mobile_"]');
+                wrappers.forEach((wrapper) => {
+                    const input = wrapper.querySelector('input');
+                    if (input) {
+                        input.setAttribute('type', 'number');
+                        input.setAttribute('inputmode', 'numeric');
+                        input.setAttribute('pattern', '-?[0-9]*');
+                        input.setAttribute('enterkeyhint', 'done');
+                        input.setAttribute('autocomplete', 'off');
+                    }
+                });
+            } catch (e) {
+                console.log("numeric keyboard helper:", e);
+            }
+        }
+
+        applyNumericKeyboard();
+        setTimeout(applyNumericKeyboard, 300);
+        setTimeout(applyNumericKeyboard, 1000);
+
+        try {
+            const observer = new MutationObserver(applyNumericKeyboard);
+            observer.observe(window.parent.document.body, {
+                childList: true,
+                subtree: true
+            });
+            setTimeout(() => observer.disconnect(), 8000);
+        } catch (e) {}
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
 
 st.session_state.player_names = players
 
@@ -484,7 +533,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_5.csv",
+        file_name="mahjong_history_v8_6.csv",
         mime="text/csv",
         use_container_width=True,
     )
