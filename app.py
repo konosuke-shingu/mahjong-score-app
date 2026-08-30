@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.10",
+    page_title="麻雀成績集計 v8.11",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -267,6 +267,8 @@ if "chip_counts" not in st.session_state:
     st.session_state.chip_counts = {}
 if "chip_rate" not in st.session_state:
     st.session_state.chip_rate = 100
+if "pending_match_reset" not in st.session_state:
+    st.session_state.pending_match_reset = False
 
 
 
@@ -290,10 +292,18 @@ def toggle_score_sign(i):
         st.session_state[key] = -int(current)
 
 
+# 履歴追加後の初期化は、次のrerun冒頭で実施する。
+# これにより、描画済みウィジェットのsession_stateを書き換える
+# StreamlitAPIExceptionを回避する。
+if st.session_state.pending_match_reset:
+    reset_all_scores()
+    st.session_state.pending_match_reset = False
+
+
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.10")
+st.title("🀄 麻雀成績集計 v8.11")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -558,8 +568,9 @@ if st.button(
             "最終P": float(row["最終P"]),
         })
 
-    # 履歴追加後、自動で次の半荘用に入力欄を初期化
-    reset_all_scores()
+    # この実行中には描画済みウィジェット値を直接変更しない。
+    # 次のrerun冒頭で安全に初期化する。
+    st.session_state.pending_match_reset = True
     st.rerun()
 
 if st.session_state.history:
@@ -604,7 +615,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_10.csv",
+        file_name="mahjong_history_v8_11.csv",
         mime="text/csv",
         use_container_width=True,
     )
