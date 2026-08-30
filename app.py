@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.2",
+    page_title="麻雀成績集計 v8.3",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -103,6 +103,54 @@ st.markdown("""
         font-size: 0.9rem;
         opacity: 0.8;
         margin-top: 0.2rem;
+    }
+
+
+    /* 名前・最終得点のクリアボタンを入力欄の内部右端に表示 */
+    div[class*="st-key-name_wrap_"],
+    div[class*="st-key-score_wrap_"] {
+        position: relative;
+    }
+
+    div[class*="st-key-name_wrap_"] div[data-testid="stButton"],
+    div[class*="st-key-score_wrap_"] div[data-testid="stButton"] {
+        position: absolute;
+        right: 7px;
+        top: 31px;
+        width: 32px !important;
+        z-index: 30;
+        margin: 0 !important;
+    }
+
+    div[class*="st-key-name_wrap_"] div[data-testid="stButton"] button,
+    div[class*="st-key-score_wrap_"] div[data-testid="stButton"] button {
+        min-width: 32px !important;
+        width: 32px !important;
+        min-height: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 50% !important;
+        font-size: 1.25rem !important;
+        line-height: 1 !important;
+        opacity: 0.55;
+    }
+
+    div[class*="st-key-name_wrap_"] div[data-testid="stButton"] button:hover,
+    div[class*="st-key-score_wrap_"] div[data-testid="stButton"] button:hover {
+        opacity: 0.95;
+        background: rgba(128,128,128,0.12) !important;
+    }
+
+    div[class*="st-key-name_wrap_"] div[data-baseweb="input"] input,
+    div[class*="st-key-score_wrap_"] div[data-baseweb="input"] input {
+        padding-right: 45px !important;
+    }
+
+    div[class*="st-key-score_wrap_"] div[data-testid="stNumberInput"] button {
+        display: none !important;
     }
 
     @media (max-width: 600px) {
@@ -280,7 +328,7 @@ def reset_all_scores():
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.2")
+st.title("🀄 麻雀成績集計 v8.3")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -321,28 +369,24 @@ for i in range(4):
     default_name = st.session_state.player_names[i]
     with st.expander(f"{i + 1}人目　{default_name}", expanded=True):
 
-        # 名前：右側に×ボタン
-        name_col, name_clear_col = st.columns([0.86, 0.14], vertical_alignment="bottom")
-        with name_col:
+        # 名前：入力欄の右端内部に×をオーバーレイ
+        with st.container(key=f"name_wrap_{i}"):
             name = st.text_input(
                 "名前",
                 value=default_name,
                 key=f"name_{i}",
                 placeholder=f"プレイヤー{i+1}",
             )
-        with name_clear_col:
             st.button(
                 "×",
                 key=f"clear_name_{i}",
                 help="名前をクリア",
-                use_container_width=True,
                 on_click=clear_name_input,
                 args=(i,),
             )
 
-        # 最終得点：st.number_input なので HTML 上も数値専用入力
-        score_col, score_clear_col = st.columns([0.86, 0.14], vertical_alignment="bottom")
-        with score_col:
+        # 最終得点：数値専用入力 + 入力欄の右端内部に×をオーバーレイ
+        with st.container(key=f"score_wrap_{i}"):
             score = st.number_input(
                 "最終得点",
                 min_value=-200000,
@@ -352,12 +396,10 @@ for i in range(4):
                 key=f"score_{i}",
                 help="数値のみ入力できます（100点単位）",
             )
-        with score_clear_col:
             st.button(
                 "×",
                 key=f"clear_score_{i}",
                 help="最終得点を空欄にする",
-                use_container_width=True,
                 on_click=clear_score_input,
                 args=(i,),
             )
@@ -515,7 +557,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_2.csv",
+        file_name="mahjong_history_v8_3.csv",
         mime="text/csv",
         use_container_width=True,
     )
