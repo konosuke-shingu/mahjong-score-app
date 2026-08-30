@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v7",
+    page_title="麻雀成績集計 v8",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -245,12 +245,20 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "player_names" not in st.session_state:
     st.session_state.player_names = DEFAULT_PLAYERS.copy()
+if "settlement_step" not in st.session_state:
+    st.session_state.settlement_step = 0
+if "settlement_rate" not in st.session_state:
+    st.session_state.settlement_rate = 30
+if "chip_counts" not in st.session_state:
+    st.session_state.chip_counts = {}
+if "chip_rate" not in st.session_state:
+    st.session_state.chip_rate = 100
 
 
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v7")
+st.title("🀄 麻雀成績集計 v8")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -431,13 +439,190 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v7.csv",
+        file_name="mahjong_history_v8.csv",
         mime="text/csv",
         use_container_width=True,
     )
 
-    if st.button("履歴をすべてクリア", use_container_width=True):
-        st.session_state.history = []
-        st.rerun()
+    st.divider()
+
+    # -----------------------------
+    # 精算
+    # -----------------------------
+    if st.session_state.settlement_step == 0:
+        if st.button("💴 精算する", type="primary", use_container_width=True):
+            st.session_state.settlement_step = 1
+            st.rerun()
+
+    elif st.session_state.settlement_step == 1:
+        st.markdown("### 精算 1/3：レート選択")
+        rate_label = st.radio(
+            "麻雀のレートを選択してください",
+            options=["1000点 × 30", "1000点 × 50", "1000点 × 100"],
+            index=[30, 50, 100].index(st.session_state.settlement_rate),
+            key="settlement_rate_radio",
+        )
+        selected_rate = {
+            "1000点 × 30": 30,
+            "1000点 × 50": 50,
+            "1000点 × 100": 100,
+        }[rate_label]
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("キャンセル", use_container_width=True):
+                st.session_state.settlement_step = 0
+                st.rerun()
+        with c2:
+            if st.button("次へ：チップ入力", type="primary", use_container_width=True):
+                st.session_state.settlement_rate = selected_rate
+                st.session_state.settlement_step = 2
+                st.rerun()
+
+    elif st.session_state.settlement_step == 2:
+        st.markdown("### 精算 2/3：チップ枚数入力")
+        st.caption("受け取りはプラス、支払いはマイナスで入力してください。4人の合計が0枚になるようにします。")
+
+        current_players = summary["プレイヤー"].tolist()
+        entered_chips = {}
+
+        for player in current_players:
+            default_value = int(st.session_state.chip_counts.get(player, 0))
+            entered_chips[player] = int(
+                st.number_input(
+                    f"{player} のチップ枚数",
+                    min_value=-999,
+                    max_value=999,
+                    value=default_value,
+                    step=1,
+                    key=f"chip_count_{player}",
+                )
+            )
+
+        chip_total = sum(entered_chips.values())
+        if chip_total == 0:
+            st.success("チップ合計：0枚")
+        else:
+            st.warning(f"チップ合計：{chip_total:+d}枚（合計0枚になるように入力してください）")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("← レート選択へ戻る", use_container_width=True):
+                st.session_state.chip_counts = entered_chips
+                st.session_state.settlement_step = 1
+                st.rerun()
+        with c2:
+            if st.button(
+                "次へ：チップレート",
+                type="primary",
+                use_container_width=True,
+                disabled=(chip_total != 0),
+            ):
+                st.session_state.chip_counts = entered_chips
+                st.session_state.settlement_step = 3
+                st.rerun()
+
+    elif st.session_state.settlement_step == 3:
+        st.markdown("### 精算 3/3：チップレート選択")
+        chip_rate_label = st.radio(
+            "チップ1枚のレートを選択してください",
+            options=["1枚 100円", "1枚 300円", "1枚 500円", "1枚 1000円"],
+            index=[100, 300, 500, 1000].index(st.session_state.chip_rate),
+            key="chip_rate_radio",
+        )
+        selected_chip_rate = {
+            "1枚 100円": 100,
+            "1枚 300円": 300,
+            "1枚 500円": 500,
+            "1枚 1000円": 1000,
+        }[chip_rate_label]
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("← チップ入力へ戻る", use_container_width=True):
+                st.session_state.settlement_step = 2
+                st.rerun()
+        with c2:
+            if st.button("精算結果を表示", type="primary", use_container_width=True):
+                st.session_state.chip_rate = selected_chip_rate
+                st.session_state.settlement_step = 4
+                st.rerun()
+
+    elif st.session_state.settlement_step == 4:
+        st.markdown("### 💴 精算結果")
+
+        rate = st.session_state.settlement_rate
+        chip_rate = st.session_state.chip_rate
+        chip_counts = st.session_state.chip_counts
+
+        settlement_rows = []
+        for _, row in summary.iterrows():
+            player = row["プレイヤー"]
+            total_p = float(row["累計P"])
+            chips = int(chip_counts.get(player, 0))
+            point_amount = total_p * rate
+            chip_amount = chips * chip_rate
+            final_amount = point_amount + chip_amount
+
+            settlement_rows.append({
+                "プレイヤー": player,
+                "累計P": total_p,
+                "麻雀分": point_amount,
+                "チップ": chips,
+                "チップ分": chip_amount,
+                "精算額": final_amount,
+            })
+
+        settlement_df = pd.DataFrame(settlement_rows).sort_values("精算額", ascending=False)
+
+        st.caption(
+            f"麻雀レート：1000点 × {rate} ／ "
+            f"チップ：1枚 {chip_rate:,}円"
+        )
+
+        for _, row in settlement_df.iterrows():
+            amount = row["精算額"]
+            sign_label = "受取" if amount > 0 else ("支払" if amount < 0 else "±0")
+            st.markdown(
+                f"""
+                <div class="result-card">
+                    <div class="result-rank">{sign_label}</div>
+                    <div class="result-name">{row['プレイヤー']}</div>
+                    <div class="result-point">{amount:+,.0f}円</div>
+                    <div class="result-detail">
+                        麻雀 {row['累計P']:+.1f}P × {rate} = {row['麻雀分']:+,.0f}円<br>
+                        チップ {int(row['チップ']):+d}枚 × {chip_rate:,}円 = {row['チップ分']:+,.0f}円
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        total_money = float(settlement_df["精算額"].sum())
+        if abs(total_money) < 0.001:
+            st.success("精算額の合計：0円")
+        else:
+            st.warning(f"精算額の合計：{total_money:+,.0f}円")
+
+        with st.expander("精算表を見る"):
+            shown = settlement_df.copy()
+            shown["累計P"] = shown["累計P"].map(fmt_point)
+            shown["麻雀分"] = shown["麻雀分"].map(lambda x: f"{x:+,.0f}円")
+            shown["チップ"] = shown["チップ"].map(lambda x: f"{int(x):+d}枚")
+            shown["チップ分"] = shown["チップ分"].map(lambda x: f"{x:+,.0f}円")
+            shown["精算額"] = shown["精算額"].map(lambda x: f"{x:+,.0f}円")
+            st.dataframe(shown, use_container_width=True, hide_index=True)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("← 精算条件を変更", use_container_width=True):
+                st.session_state.settlement_step = 1
+                st.rerun()
+        with c2:
+            if st.button("✅ 精算完了・履歴クリア", type="primary", use_container_width=True):
+                st.session_state.history = []
+                st.session_state.settlement_step = 0
+                st.session_state.chip_counts = {}
+                st.rerun()
 else:
     st.info("まだ履歴はありません。")
