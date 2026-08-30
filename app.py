@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.6",
+    page_title="麻雀成績集計 v8.7",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -274,7 +274,7 @@ def reset_all_scores():
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.6")
+st.title("🀄 麻雀成績集計 v8.7")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -330,7 +330,7 @@ for i in range(4):
                 value=25000,
                 step=100,
                 key=f"score_{i}",
-                help="タップするとスマホでは数字キーボードが優先表示されます",
+                help="スマホでは数値キーボードを優先表示します。マイナス得点も入力できます",
                 format="%d",
             )
 
@@ -378,7 +378,7 @@ components.html(
                     const input = wrapper.querySelector('input');
                     if (input) {
                         input.setAttribute('type', 'number');
-                        input.setAttribute('inputmode', 'numeric');
+                        input.setAttribute('inputmode', 'decimal');
                         input.setAttribute('pattern', '-?[0-9]*');
                         input.setAttribute('enterkeyhint', 'done');
                         input.setAttribute('autocomplete', 'off');
@@ -533,7 +533,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_6.csv",
+        file_name="mahjong_history_v8_7.csv",
         mime="text/csv",
         use_container_width=True,
     )
