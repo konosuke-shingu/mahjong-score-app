@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8.7",
+    page_title="麻雀成績集計 v8.8",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -107,6 +107,17 @@ st.markdown("""
     }
 
 
+
+
+    /* 最終得点横の±ボタン */
+    div[class*="st-key-toggle_sign_"] button {
+        min-height: 46px !important;
+        height: 46px !important;
+        padding: 0 !important;
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        border-radius: 10px !important;
+    }
 
     @media (max-width: 600px) {
         .block-container {
@@ -271,10 +282,18 @@ def reset_all_scores():
         st.session_state[f"yakitori_{i}"] = False
 
 
+def toggle_score_sign(i):
+    """最終得点の符号を反転する。例: 9600 <-> -9600"""
+    key = f"score_{i}"
+    current = st.session_state.get(key, 25000)
+    if current is not None:
+        st.session_state[key] = -int(current)
+
+
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8.7")
+st.title("🀄 麻雀成績集計 v8.8")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -322,16 +341,28 @@ for i in range(4):
             placeholder=f"プレイヤー{i+1}",
         )
 
-        with st.container(key=f"score_mobile_{i}"):
-            score = st.number_input(
-                "最終得点",
-                min_value=-200000,
-                max_value=300000,
-                value=25000,
-                step=100,
-                key=f"score_{i}",
-                help="スマホでは数値キーボードを優先表示します。マイナス得点も入力できます",
-                format="%d",
+        score_col, sign_col = st.columns([0.84, 0.16], vertical_alignment="bottom")
+        with score_col:
+            with st.container(key=f"score_mobile_{i}"):
+                score = st.number_input(
+                    "最終得点",
+                    min_value=-200000,
+                    max_value=300000,
+                    value=25000,
+                    step=100,
+                    key=f"score_{i}",
+                    help="数字を入力し、右の±ボタンでプラス/マイナスを切り替えられます",
+                    format="%d",
+                )
+
+        with sign_col:
+            st.button(
+                "±",
+                key=f"toggle_sign_{i}",
+                help="最終得点のプラス/マイナスを切り替える",
+                use_container_width=True,
+                on_click=toggle_score_sign,
+                args=(i,),
             )
 
         c1, c2 = st.columns(2)
@@ -533,7 +564,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8_7.csv",
+        file_name="mahjong_history_v8_8.csv",
         mime="text/csv",
         use_container_width=True,
     )
