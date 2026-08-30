@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(
-    page_title="麻雀成績集計 v8",
+    page_title="麻雀成績集計 v8.2",
     page_icon="🀄",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -255,10 +255,32 @@ if "chip_rate" not in st.session_state:
     st.session_state.chip_rate = 100
 
 
+
+# -----------------------------
+# 入力補助
+# -----------------------------
+def clear_name_input(i):
+    st.session_state[f"name_{i}"] = ""
+
+
+def clear_score_input(i):
+    # st.number_input は数値専用。None にすると空欄表示にできる。
+    st.session_state[f"score_{i}"] = None
+
+
+def reset_all_scores():
+    # 対局入力を次の半荘用の初期状態へ戻す
+    # 名前と履歴は維持する
+    for i in range(4):
+        st.session_state[f"score_{i}"] = 25000
+        st.session_state[f"tobashi_{i}"] = 0
+        st.session_state[f"yakitori_{i}"] = False
+
+
 # -----------------------------
 # ヘッダー
 # -----------------------------
-st.title("🀄 麻雀成績集計 v8")
+st.title("🀄 麻雀成績集計 v8.2")
 st.caption("スマホ操作向け / 25,000点持ち・30,000点返し / ウマ10-20 / オカなし")
 
 with st.expander("計算ルールを確認"):
@@ -282,30 +304,63 @@ with st.expander("計算ルールを確認"):
 st.subheader("対局結果入力")
 st.caption("スマホでは上から1人ずつ入力できます。")
 
+# 最終得点のみ一括で25,000点に戻す
+st.button(
+    "↺ 対局入力をALLクリア（25,000点）",
+    use_container_width=True,
+    on_click=reset_all_scores,
+)
+
 players = []
 scores = []
 tobashi_counts = []
 yakitori_flags = []
+score_missing = False
 
 for i in range(4):
     default_name = st.session_state.player_names[i]
     with st.expander(f"{i + 1}人目　{default_name}", expanded=True):
-        name = st.text_input(
-            "名前",
-            value=default_name,
-            key=f"name_{i}",
-            placeholder=f"プレイヤー{i+1}",
-        )
 
-        score = st.number_input(
-            "最終得点",
-            min_value=-200000,
-            max_value=300000,
-            value=25000,
-            step=100,
-            key=f"score_{i}",
-            help="100点単位で入力できます",
-        )
+        # 名前：右側に×ボタン
+        name_col, name_clear_col = st.columns([0.86, 0.14], vertical_alignment="bottom")
+        with name_col:
+            name = st.text_input(
+                "名前",
+                value=default_name,
+                key=f"name_{i}",
+                placeholder=f"プレイヤー{i+1}",
+            )
+        with name_clear_col:
+            st.button(
+                "×",
+                key=f"clear_name_{i}",
+                help="名前をクリア",
+                use_container_width=True,
+                on_click=clear_name_input,
+                args=(i,),
+            )
+
+        # 最終得点：st.number_input なので HTML 上も数値専用入力
+        score_col, score_clear_col = st.columns([0.86, 0.14], vertical_alignment="bottom")
+        with score_col:
+            score = st.number_input(
+                "最終得点",
+                min_value=-200000,
+                max_value=300000,
+                value=25000,
+                step=100,
+                key=f"score_{i}",
+                help="数値のみ入力できます（100点単位）",
+            )
+        with score_clear_col:
+            st.button(
+                "×",
+                key=f"clear_score_{i}",
+                help="最終得点を空欄にする",
+                use_container_width=True,
+                on_click=clear_score_input,
+                args=(i,),
+            )
 
         c1, c2 = st.columns(2)
         with c1:
@@ -325,7 +380,13 @@ for i in range(4):
             )
 
         players.append(name.strip() or f"プレイヤー{i + 1}")
-        scores.append(int(score))
+
+        if score is None:
+            score_missing = True
+            scores.append(0)
+        else:
+            scores.append(int(score))
+
         tobashi_counts.append(int(tobashi_count))
         yakitori_flags.append(bool(yakitori))
 
@@ -334,53 +395,68 @@ st.session_state.player_names = players
 if len(set(players)) != 4:
     st.warning("プレイヤー名が重複しています。履歴集計のため別々の名前がおすすめです。")
 
+if score_missing:
+    st.warning("最終得点が空欄のプレイヤーがいます。数値を入力してください。")
+
 # -----------------------------
 # 計算結果
 # -----------------------------
-result = calculate_match(players, scores, tobashi_counts, yakitori_flags)
-
-st.subheader("今回の結果")
-
-# スマホ用カード表示
-for _, row in result.sort_values(["順位", "得点"], ascending=[True, False]).iterrows():
-    st.markdown(
-        f"""
-        <div class="result-card">
-            <div class="result-rank">{int(row['順位'])}位</div>
-            <div class="result-name">{row['プレイヤー']}</div>
-            <div class="result-point">{fmt_point(row['最終P'])}</div>
-            <div class="result-detail">
-                {int(row['得点']):,}点 → 5捨6入後 {int(row['5捨6入後']):,}点
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-if abs(float(result["最終P"].sum())) < 1e-9:
-    st.success("最終ポイント合計：0P")
+if score_missing:
+    result = None
 else:
-    st.error(f"最終ポイント合計：{result['最終P'].sum():+.1f}P")
+    result = calculate_match(players, scores, tobashi_counts, yakitori_flags)
 
-with st.expander("ポイント内訳を見る"):
-    detail = result.copy()
-    for c in ["素点", "順位点", "飛び", "飛ばし", "焼き鳥", "最終P"]:
-        detail[c] = detail[c].map(fmt_point)
-    detail["順位"] = detail["順位"].map(lambda x: f"{int(x)}位")
-    st.dataframe(
-        detail[
-            ["プレイヤー", "得点", "5捨6入後", "順位", "素点", "順位点", "飛び", "飛ばし", "焼き鳥", "最終P"]
-        ],
-        use_container_width=True,
-        hide_index=True,
-    )
+if result is not None:
+    st.subheader("今回の結果")
+
+    # スマホ用カード表示
+    for _, row in result.sort_values(["順位", "得点"], ascending=[True, False]).iterrows():
+        st.markdown(
+            f"""
+            <div class="result-card">
+                <div class="result-rank">{int(row['順位'])}位</div>
+                <div class="result-name">{row['プレイヤー']}</div>
+                <div class="result-point">{fmt_point(row['最終P'])}</div>
+                <div class="result-detail">
+                    {int(row['得点']):,}点 → 5捨6入後 {int(row['5捨6入後']):,}点
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    if abs(float(result["最終P"].sum())) < 1e-9:
+        st.success("最終ポイント合計：0P")
+    else:
+        st.error(f"最終ポイント合計：{result['最終P'].sum():+.1f}P")
+
+    with st.expander("ポイント内訳を見る"):
+        detail = result.copy()
+        for c in ["素点", "順位点", "飛び", "飛ばし", "焼き鳥", "最終P"]:
+            detail[c] = detail[c].map(fmt_point)
+        detail["順位"] = detail["順位"].map(lambda x: f"{int(x)}位")
+        st.dataframe(
+            detail[
+                ["プレイヤー", "得点", "5捨6入後", "順位", "素点", "順位点", "飛び", "飛ばし", "焼き鳥", "最終P"]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+else:
+    st.info("4人全員の最終得点を入力すると、計算結果が表示されます。")
 
 # -----------------------------
 # 履歴操作
 # -----------------------------
 st.subheader("履歴")
 
-if st.button("＋ この半荘を履歴に追加", type="primary", use_container_width=True):
+if st.button(
+    "＋ この半荘を履歴に追加",
+    type="primary",
+    use_container_width=True,
+    disabled=(result is None),
+):
     existing_matches = {x["半荘"] for x in st.session_state.history}
     match_no = max(existing_matches) + 1 if existing_matches else 1
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -439,7 +515,7 @@ if st.session_state.history:
     st.download_button(
         "履歴CSVをダウンロード",
         data=csv,
-        file_name="mahjong_history_v8.csv",
+        file_name="mahjong_history_v8_2.csv",
         mime="text/csv",
         use_container_width=True,
     )
